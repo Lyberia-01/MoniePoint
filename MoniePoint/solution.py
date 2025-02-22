@@ -1,6 +1,146 @@
-#Open File.
+#This is my solution using SQLite and Python
+import sqlite3
+import os
+import re
+from datetime import datetime
+from collections import defaultdict
 
-file = open('2025-01-01.txt', 'r')
+#This will connect to the SQLite database
+conn = sqlite3.connect('monieshop_transactions.db')
+cursor = conn.cursor()
 
-for line in file:
-  print(line)
+#I used this to Create tables
+cursor.execute('''
+CREATE TABLE IF NOT EXISTS transactions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    staf_id INTEGER,
+    trans_time TEXT,
+    sales_amount REAL
+)
+''')
+
+cursor.execute('''
+CREATE TABLE IF NOT EXISTS products (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    transaction_id INTEGER,
+    product_id INTEGER,
+    quantity INTEGER,
+    FOREIGN KEY (transaction_id) REFERENCES transactions(id)
+)
+''')
+
+# Function to parse and insert data from a transaction file
+def processTransaction(file_path):
+    with open(file_path, 'r') as file:
+        for line in file:
+            # I decided to just split with the ',' instead of regex
+            parts = line.strip().split(',')
+            #print(parts)
+            if len(parts) == 4:
+                staf_id = int(parts[0])
+                trans_time = parts[1]
+                prods_sold = parts[2].strip('[]')
+                sales_amount = float(parts[3])
+
+                #Sending this to the transactions table
+                cursor.execute('''
+                    INSERT INTO transactions (staf_id, trans_time, sales_amount)
+                    VALUES (?, ?, ?)
+                ''', (staf_id, trans_time, sales_amount))
+                transaction_id = cursor.lastrowid
+
+                # Sending this to the products table, split this by the '|' into a list
+                for product in prods_sold.split('|'):
+                    product_id, quantity = map(int, product.split(':'))
+                    cursor.execute('''
+                        INSERT INTO products (transaction_id, product_id, quantity)
+                        VALUES (?, ?, ?)
+                    ''', (transaction_id, product_id, quantity))
+
+#So this will process all transaction files in the same folder as my python file
+for filename in os.listdir('.'):
+    #I used a test case for 2025 so it starts with '2025' and ends with you know? lol (.txt)
+    if filename.startswith('2025-') and filename.endswith('.txt'):
+        processTransaction(filename)
+
+conn.commit()
+
+#Questions
+
+#Q1. what is the Highest sales volume in a day
+cursor.execute('''
+SELECT DATE(trans_time) AS date, COUNT(*) AS transaction_count
+FROM transactions
+GROUP BY date
+ORDER BY transaction_count DESC
+LIMIT 1
+''')
+highest_sales_volume_day = cursor.fetchone()
+if highest_sales_volume_day:
+    print(f"Highest sales volume in a day: {highest_sales_volume_day[0]} with {highest_sales_volume_day[1]} transactions")
+else:
+    print('No Sales volume on to the next.')
+
+
+#Q2. What is Highest sales value in a day
+cursor.execute('''
+SELECT DATE(trans_time) AS date, SUM(sales_amount) AS total_sales
+FROM transactions
+GROUP BY date
+ORDER BY total_sales DESC
+LIMIT 1
+''')
+highest_sales_value_day = cursor.fetchone()
+if highest_sales_value_day:
+  print(f"Highest sales value in a day: {highest_sales_value_day[0]} with total sales of {highest_sales_value_day[1]:.2f}")
+else:
+  print('No sales value for the day Thank you.')
+
+#Q3. What is Most sold product ID by volume
+cursor.execute('''
+SELECT product_id, SUM(quantity) AS total_quantity
+FROM products
+GROUP BY product_id
+ORDER BY total_quantity DESC
+LIMIT 1
+''')
+most_sold_product = cursor.fetchone()
+if most_sold_product:
+    print(f"Most sold product ID by volume: {most_sold_product[0]} with {most_sold_product[1]} units sold")
+else:
+    print('No sold Product. Thank you')
+
+#Q4. What is the Highest sales staff ID for each month
+cursor.execute('''
+SELECT strftime('%Y-%m', trans_time) AS month, staf_id, SUM(sales_amount) AS total_sales
+FROM transactions
+GROUP BY month, staf_id
+ORDER BY month, total_sales DESC
+''')
+monthly_sales = defaultdict(lambda: (None, 0))
+for row in cursor.fetchall():
+    month, staf_id, total_sales = row
+    if total_sales > monthly_sales[month][1]:
+        monthly_sales[month] = (staf_id, total_sales)
+
+print("Highest sales staff ID for each month:")
+for month, (staf_id, total_sales) in monthly_sales.items():
+    print(f"{month}: Sales Staff ID {staf_id} with total sales of {total_sales:.2f}")
+
+
+#Q5.What is Highest hour of the day by average transaction volume
+cursor.execute('''
+SELECT strftime('%H', trans_time) AS hour, COUNT(*) AS transaction_count
+FROM transactions
+GROUP BY hour
+ORDER BY transaction_count DESC
+LIMIT 1
+''')
+peak_hour = cursor.fetchone()
+if peak_hour:
+  print(f"Highest hour of the day by average transaction volume: {peak_hour[0]}:00 with {peak_hour[1]} transactions on average")
+else:
+  print('No peak hour for the Day')
+
+# The End Thank you.
+conn.close()
