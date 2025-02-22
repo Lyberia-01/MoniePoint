@@ -1,15 +1,11 @@
 #This is my solution using SQLite and Python
 import sqlite3
 import os
-import re
-from datetime import datetime
 from collections import defaultdict
 
-#This will connect to the SQLite database
 conn = sqlite3.connect('monieshop_transactions.db')
 cursor = conn.cursor()
 
-#I used this to Create tables
 cursor.execute('''
 CREATE TABLE IF NOT EXISTS transactions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -29,7 +25,7 @@ CREATE TABLE IF NOT EXISTS products (
 )
 ''')
 
-# Function to parse and insert data from a transaction file
+
 def processTransaction(file_path):
     with open(file_path, 'r') as file:
         for line in file:
@@ -65,82 +61,108 @@ for filename in os.listdir('.'):
 
 conn.commit()
 
-#Questions
 
-#Q1. what is the Highest sales volume in a day
-cursor.execute('''
-SELECT DATE(trans_time) AS date, COUNT(*) AS transaction_count
-FROM transactions
-GROUP BY date
-ORDER BY transaction_count DESC
-LIMIT 1
-''')
-highest_sales_volume_day = cursor.fetchone()
-if highest_sales_volume_day:
-    print(f"Highest sales volume in a day: {highest_sales_volume_day[0]} with {highest_sales_volume_day[1]} transactions")
-else:
-    print('No Sales volume on to the next.')
-
-
-#Q2. What is Highest sales value in a day
-cursor.execute('''
-SELECT DATE(trans_time) AS date, SUM(sales_amount) AS total_sales
-FROM transactions
-GROUP BY date
-ORDER BY total_sales DESC
-LIMIT 1
-''')
-highest_sales_value_day = cursor.fetchone()
-if highest_sales_value_day:
-  print(f"Highest sales value in a day: {highest_sales_value_day[0]} with total sales of {highest_sales_value_day[1]:.2f}")
-else:
-  print('No sales value for the day Thank you.')
-
-#Q3. What is Most sold product ID by volume
-cursor.execute('''
-SELECT product_id, SUM(quantity) AS total_quantity
-FROM products
-GROUP BY product_id
-ORDER BY total_quantity DESC
-LIMIT 1
-''')
-most_sold_product = cursor.fetchone()
-if most_sold_product:
-    print(f"Most sold product ID by volume: {most_sold_product[0]} with {most_sold_product[1]} units sold")
-else:
-    print('No sold Product. Thank you')
-
-#Q4. What is the Highest sales staff ID for each month
-cursor.execute('''
-SELECT strftime('%Y-%m', trans_time) AS month, staf_id, SUM(sales_amount) AS total_sales
-FROM transactions
-GROUP BY month, staf_id
-ORDER BY month, total_sales DESC
-''')
-monthly_sales = defaultdict(lambda: (None, 0))
-for row in cursor.fetchall():
-    month, staf_id, total_sales = row
-    if total_sales > monthly_sales[month][1]:
-        monthly_sales[month] = (staf_id, total_sales)
-
-print("Highest sales staff ID for each month:")
-for month, (staf_id, total_sales) in monthly_sales.items():
-    print(f"{month}: Sales Staff ID {staf_id} with total sales of {total_sales:.2f}")
+def highestSalesVolume():
+    cursor.execute('''
+    SELECT DATE(trans_time) AS date, COUNT(*) AS transaction_count
+    FROM transactions
+    GROUP BY date
+    ORDER BY transaction_count DESC
+    LIMIT 1
+    ''')
+    highest_sales_volume_day = cursor.fetchone()
+    if highest_sales_volume_day:
+        print(f"Highest sales volume in a day: {highest_sales_volume_day[0]} with {highest_sales_volume_day[1]} transactions")
+    else:
+        print('No Sales volume on to the next.')
 
 
-#Q5.What is Highest hour of the day by average transaction volume
-cursor.execute('''
-SELECT strftime('%H', trans_time) AS hour, COUNT(*) AS transaction_count
-FROM transactions
-GROUP BY hour
-ORDER BY transaction_count DESC
-LIMIT 1
-''')
-peak_hour = cursor.fetchone()
-if peak_hour:
-  print(f"Highest hour of the day by average transaction volume: {peak_hour[0]}:00 with {peak_hour[1]} transactions on average")
-else:
-  print('No peak hour for the Day')
+
+def highestSalesValue():
+    cursor.execute('''
+    SELECT DATE(trans_time) AS date, SUM(sales_amount) AS total_sales
+    FROM transactions
+    GROUP BY date
+    ORDER BY total_sales DESC
+    LIMIT 1
+    ''')
+    highest_sales_value_day = cursor.fetchone()
+    if highest_sales_value_day:
+      print(f"Highest sales value in a day: {highest_sales_value_day[0]} with total sales of {highest_sales_value_day[1]:.2f}")
+    else:
+      print('No sales value for the day Thank you.')
+
+
+
+def mostSoldProduct():
+    cursor.execute('''
+    SELECT product_id, SUM(quantity) AS total_quantity
+    FROM products
+    GROUP BY product_id
+    ORDER BY total_quantity DESC
+    LIMIT 1
+    ''')
+    most_sold_product = cursor.fetchone()
+    if most_sold_product:
+        print(f"Most sold product ID by volume: {most_sold_product[0]} with {most_sold_product[1]} units sold")
+    else:
+        print('No sold Product. Thank you')
+
+
+def highestStaffSales():
+    cursor.execute('''
+    SELECT strftime('%Y-%m', trans_time) AS month, staf_id, SUM(sales_amount) AS total_sales
+    FROM transactions
+    GROUP BY month, staf_id
+    ORDER BY month, total_sales DESC
+    ''')
+    monthly_sales = defaultdict(lambda: (None, 0))
+    for row in cursor.fetchall():
+        month, staf_id, total_sales = row
+        if total_sales > monthly_sales[month][1]:
+            monthly_sales[month] = (staf_id, total_sales)
+
+    print("Highest sales staff ID for each month:")
+    for month, (staf_id, total_sales) in monthly_sales.items():
+        print(f"{month}: Sales Staff ID {staf_id} with total sales of {total_sales:.2f}")
+
+
+
+def highestHour():
+    cursor.execute('''
+    SELECT strftime('%H', trans_time) AS hour, COUNT(*) AS transaction_count
+    FROM transactions
+    GROUP BY hour
+    ORDER BY transaction_count DESC
+    LIMIT 1
+    ''')
+    peak_hour = cursor.fetchone()
+    if peak_hour:
+      print(f"Highest hour of the day by average transaction volume: {peak_hour[0]}:00 with {peak_hour[1]} transactions on average")
+    else:
+      print('No peak hour for the Day')
+
+
+#Solution to Question 1. what is the Highest sales volume in a day
+highestSalesVolume()
+#Solution to Question 2. What is Highest sales value in a day
+highestSalesValue()
+#Solution to Question 3. What is Most sold product ID by volume
+mostSoldProduct()
+#Solution to Question 4. What is the Highest sales staff ID for each month
+highestStaffSales()
+#Solution to Question 5. What is Highest hour of the day by average transaction volume
+highestHour()
+
+def clearDb():
+    cursor.execute('DELETE FROM transactions')
+    cursor.execute('DELETE FROM products')
+    conn.commit()
+    #I used this approach to keep the table structure.
+    print('All data has been cleared from db')
+
+#I decided to clear the DB Afterwards.
+clearDb()
 
 # The End Thank you.
 conn.close()
