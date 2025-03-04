@@ -53,11 +53,11 @@ def processTransaction(file_path):
                         VALUES (?, ?, ?)
                     ''', (transaction_id, product_id, quantity))
 
-#So this will process all transaction files in the same folder as my python file
-for filename in os.listdir('.'):
+#So this will process all transaction files in the files folder in my directory
+for filename in os.listdir('./files'):
     #I used a test case for 2025 so it starts with '2025' and ends with you know? lol (.txt)
     if filename.startswith('2025-') and filename.endswith('.txt'):
-        processTransaction(filename)
+        processTransaction('./files/'+filename)
 
 conn.commit()
 
